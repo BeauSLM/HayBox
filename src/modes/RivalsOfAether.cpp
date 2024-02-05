@@ -7,18 +7,18 @@
 RivalsOfAether::RivalsOfAether(socd::SocdType socd_type) {
     _socd_pair_count = 4;
     _socd_pairs = new socd::SocdPair[_socd_pair_count]{
-        socd::SocdPair{&InputState::left,    &InputState::right,   socd_type},
-        socd::SocdPair{ &InputState::down,   &InputState::up,      socd_type},
-        socd::SocdPair{ &InputState::c_left, &InputState::c_right, socd_type},
-        socd::SocdPair{ &InputState::c_down, &InputState::c_up,    socd_type},
+        socd::SocdPair{&InputState::left,    &InputState::right,       socd_type},
+        socd::SocdPair{ &InputState::down,   &InputState::lightshield, socd_type},
+        socd::SocdPair{ &InputState::c_left, &InputState::c_right,     socd_type},
+        socd::SocdPair{ &InputState::c_down, &InputState::c_up,        socd_type},
     };
 }
 
 void RivalsOfAether::UpdateDigitalOutputs(InputState &inputs, OutputState &outputs) {
     outputs.a = inputs.a;
-    outputs.b = inputs.b;
-    outputs.x = inputs.x;
-    outputs.y = inputs.y;
+    outputs.b = inputs.midshield || inputs.up;
+    outputs.x = inputs.b;
+    outputs.y = inputs.y || inputs.x;
     outputs.buttonR = inputs.z;
     if (inputs.nunchuk_connected) {
         // Lightshield with C button.
@@ -33,8 +33,6 @@ void RivalsOfAether::UpdateDigitalOutputs(InputState &inputs, OutputState &outpu
     outputs.start = inputs.start;
     outputs.select = inputs.select;
     outputs.home = inputs.home;
-    outputs.leftStickClick = inputs.lightshield;
-    outputs.rightStickClick = inputs.midshield;
 
     // Activate D-Pad layer by holding Mod X + Mod Y.
     if (inputs.mod_x && inputs.mod_y) {
@@ -51,7 +49,7 @@ void RivalsOfAether::UpdateAnalogOutputs(InputState &inputs, OutputState &output
         inputs.left,
         inputs.right,
         inputs.down,
-        inputs.up,
+        inputs.lightshield,
         inputs.c_left,
         inputs.c_right,
         inputs.c_down,
