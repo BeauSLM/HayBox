@@ -37,8 +37,8 @@ void XInputBackend::SendReport() {
 
     // Digital outputs
     _report.a = _outputs.a;
-    _report.b = _outputs.b;
-    _report.x = _outputs.x;
+    _report.b = _outputs.x;
+    _report.x = _outputs.b;
     _report.y = _outputs.y;
     _report.lb = _outputs.buttonL;
     _report.rb = _outputs.buttonR;

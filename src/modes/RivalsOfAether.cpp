@@ -5,9 +5,10 @@
 #define ANALOG_STICK_MAX 228
 
 RivalsOfAether::RivalsOfAether(socd::SocdType socd_type) {
-    _socd_pair_count = 4;
+    _socd_pair_count = 5;
     _socd_pairs = new socd::SocdPair[_socd_pair_count]{
         socd::SocdPair{&InputState::left,    &InputState::right,       socd_type},
+        socd::SocdPair{ &InputState::down,   &InputState::up, socd_type},
         socd::SocdPair{ &InputState::down,   &InputState::lightshield, socd_type},
         socd::SocdPair{ &InputState::c_left, &InputState::c_right,     socd_type},
         socd::SocdPair{ &InputState::c_down, &InputState::c_up,        socd_type},
@@ -16,8 +17,8 @@ RivalsOfAether::RivalsOfAether(socd::SocdType socd_type) {
 
 void RivalsOfAether::UpdateDigitalOutputs(InputState &inputs, OutputState &outputs) {
     outputs.a = inputs.a;
-    outputs.b = inputs.midshield || inputs.up;
-    outputs.x = inputs.b;
+    outputs.x = inputs.midshield;
+    outputs.b = inputs.b;
     outputs.y = inputs.y || inputs.x;
     outputs.buttonR = inputs.z;
     if (inputs.nunchuk_connected) {
@@ -49,7 +50,7 @@ void RivalsOfAether::UpdateAnalogOutputs(InputState &inputs, OutputState &output
         inputs.left,
         inputs.right,
         inputs.down,
-        inputs.lightshield,
+        inputs.up || inputs.lightshield,
         inputs.c_left,
         inputs.c_right,
         inputs.c_down,
