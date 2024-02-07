@@ -1,38 +1,35 @@
-#include "modes/Melee18Button.hpp"
+#include "modes/Melee20ButtonMLG.hpp"
 
 #define ANALOG_STICK_MIN 48
 #define ANALOG_STICK_NEUTRAL 128
 #define ANALOG_STICK_MAX 208
 
-Melee18Button::Melee18Button(socd::SocdType socd_type, Melee18ButtonOptions options) {
+Melee20ButtonMLG::Melee20ButtonMLG(socd::SocdType socd_type, Melee20ButtonMLGOptions options)
+{
     _socd_pair_count = 4;
     _socd_pairs = new socd::SocdPair[_socd_pair_count]{
-        socd::SocdPair{&InputState::left,    &InputState::right,   socd_type},
-        socd::SocdPair{ &InputState::down,   &InputState::up,      socd_type},
-        socd::SocdPair{ &InputState::c_left, &InputState::c_right, socd_type},
-        socd::SocdPair{ &InputState::c_down, &InputState::c_up,    socd_type},
+        socd::SocdPair{&InputState::left,    &InputState::right  },
+        socd::SocdPair{ &InputState::down,   &InputState::up2    },
+        socd::SocdPair{ &InputState::c_left, &InputState::c_right},
+        socd::SocdPair{ &InputState::c_down, &InputState::c_up   },
     };
 
     _options = options;
-    horizontal_socd = false;
+    _horizontal_socd = false;
 }
 
-void Melee18Button::HandleSocd(InputState &inputs) {
-    horizontal_socd = inputs.left && inputs.right;
+void Melee20ButtonMLG::HandleSocd(InputState &inputs) {
+    _horizontal_socd = inputs.left && inputs.right;
     InputMode::HandleSocd(inputs);
 }
 
-void Melee18Button::UpdateDigitalOutputs(InputState &inputs, OutputState &outputs) {
+void Melee20ButtonMLG::UpdateDigitalOutputs(InputState &inputs, OutputState &outputs) {
     outputs.a = inputs.a;
     outputs.b = inputs.b;
     outputs.x = inputs.x;
     outputs.y = inputs.y;
     outputs.buttonR = inputs.z;
     if (inputs.nunchuk_connected) {
-        // Lightshield with C button.
-        if (inputs.nunchuk_c) {
-            outputs.triggerLAnalog = 49;
-        }
         outputs.triggerLDigital = inputs.nunchuk_z;
     } else {
         outputs.triggerLDigital = inputs.l;
@@ -40,8 +37,8 @@ void Melee18Button::UpdateDigitalOutputs(InputState &inputs, OutputState &output
     outputs.triggerRDigital = inputs.r;
     outputs.start = inputs.start;
 
-    // Activate D-Pad layer by holding Mod X + Mod Y.
-    if (inputs.mod_x && inputs.mod_y) {
+    // Activate D-Pad layer by holding Mod X + Mod Y or Nunchuk C button. And now the Up button
+    if (inputs.nunchuk_c || inputs.up) {
         outputs.dpadUp = inputs.c_up;
         outputs.dpadDown = inputs.c_down;
         outputs.dpadLeft = inputs.c_left;
@@ -54,13 +51,13 @@ void Melee18Button::UpdateDigitalOutputs(InputState &inputs, OutputState &output
         outputs.dpadRight = true;
 }
 
-void Melee18Button::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs) {
+void Melee20ButtonMLG::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs) {
     // Coordinate calculations to make modifier handling simpler.
     UpdateDirections(
         inputs.left,
         inputs.right,
         inputs.down,
-        inputs.up,
+        inputs.up2,
         inputs.c_left,
         inputs.c_right,
         inputs.c_down,
@@ -71,19 +68,38 @@ void Melee18Button::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs
         outputs
     );
 
-    bool shield_button_pressed = inputs.l || inputs.r;
-
-    if (directions.diagonal && directions.y == -1 && _options.crouch_walk_os) {
+    bool shield_button_pressed = inputs.l || inputs.r || inputs.lightshield || inputs.midshield;
+    if (directions.diagonal) {
+        // q1/2 = 7000 7000
         outputs.leftStickX = 128 + (directions.x * 56);
-        outputs.leftStickY = 128 + (directions.y * 55);
+        outputs.leftStickY = 128 + (directions.y * 56);
+        // L, R, LS, and MS + q3/4 = 7000 6875 (For vanilla shield drop. Gives 44.5
+        // degree wavedash). Also used as default q3/4 diagonal if crouch walk option select is
+        // enabled.
+        if (directions.y == -1 && (shield_button_pressed || _options.crouch_walk_os)) {
+            outputs.leftStickX = 128 + (directions.x * 56);
+            outputs.leftStickY = 128 + (directions.y * 55);
+        }
     }
 
     if (inputs.mod_x) {
+        // MX + Horizontal (even if shield is held) = 6625 = 53
         if (directions.horizontal) {
             outputs.leftStickX = 128 + (directions.x * 53);
         }
+        // MX + Vertical (even if shield is held) = 5375 = 43
         if (directions.vertical) {
             outputs.leftStickY = 128 + (directions.y * 43);
+        }
+        if (directions.diagonal) {
+            // MX + q1/2/3/4 = 7375 3125 = 59 25
+            outputs.leftStickX = 128 + (directions.x * 59);
+            outputs.leftStickY = 128 + (directions.y * 25);
+            if (shield_button_pressed) {
+                // MX + L, R, LS, and MS + q1/2/3/4 = 6375 3750 = 51 30
+                outputs.leftStickX = 128 + (directions.x * 51);
+                outputs.leftStickY = 128 + (directions.y * 30);
+            }
         }
 
         // Angled fsmash
@@ -149,11 +165,28 @@ void Melee18Button::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs
     }
 
     if (inputs.mod_y) {
+        // MY + Horizontal (even if shield is held) = 3375 = 27
         if (directions.horizontal) {
             outputs.leftStickX = 128 + (directions.x * 27);
         }
+        // MY + Vertical (even if shield is held) = 7375 = 59
         if (directions.vertical) {
             outputs.leftStickY = 128 + (directions.y * 59);
+        }
+        if (directions.diagonal) {
+            // MY + q1/2/3/4 = 3125 7375 = 25 59
+            outputs.leftStickX = 128 + (directions.x * 25);
+            outputs.leftStickY = 128 + (directions.y * 59);
+            if (shield_button_pressed) {
+                // MY + L, R, LS, and MS + q1/2 = 4750 8750 = 38 70
+                outputs.leftStickX = 128 + (directions.x * 38);
+                outputs.leftStickY = 128 + (directions.y * 70);
+                // MY + L, R, LS, and MS + q3/4 = 5000 8500 = 40 68
+                if (directions.y == -1) {
+                    outputs.leftStickX = 128 + (directions.x * 40);
+                    outputs.leftStickY = 128 + (directions.y * 68);
+                }
+            }
         }
 
         // Turnaround neutral B nerf
@@ -216,67 +249,6 @@ void Melee18Button::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs
         }
     }
 
-    if (inputs.l) {
-        // L overrides modifiers, both for wavedash nerf and so MX/MY can give midshield/lightshield
-        // without forcing shield tilt.
-        if (directions.horizontal) {
-            outputs.leftStickX = 128 + (directions.x * 80);
-            if (directions.y == 1) {
-                outputs.leftStickX = 128 + (directions.x * 43);
-                outputs.leftStickY = 128 + 43;
-            }
-            if (directions.y == -1) {
-                outputs.leftStickX = 128 + (directions.x * 57);
-                outputs.leftStickY = 128 - 55;
-            }
-        }
-        if (directions.vertical) {
-            outputs.leftStickY = 128 + (directions.y * 80);
-        }
-
-        // L + Mod X = midshield
-        if (inputs.mod_x) {
-            outputs.triggerLDigital = false;
-            outputs.triggerRAnalog = 94;
-
-            if (directions.diagonal) {
-                outputs.leftStickX = 128 + (directions.x * 51);
-                outputs.leftStickY = 128 + (directions.y * 30);
-            }
-        }
-        // L + Mod Y = lightshield
-        if (inputs.mod_y) {
-            outputs.triggerLDigital = false;
-            outputs.triggerRAnalog = 49;
-
-            if (directions.diagonal) {
-                outputs.leftStickX = 128 + (directions.x * 40);
-                outputs.leftStickY = 128 + (directions.y * 68);
-            }
-        }
-    }
-
-    // Holding R gives special shield tilt and wavedash coordinates.
-    if (inputs.r) {
-        if (directions.horizontal) {
-            outputs.leftStickX = 128 + (directions.x * 51);
-        }
-        if (directions.vertical) {
-            outputs.leftStickY = 128 + (directions.y * 43);
-        }
-        if (directions.diagonal) {
-            outputs.leftStickX = 128 + (directions.x * 43);
-            if (inputs.mod_x) {
-                outputs.leftStickX = 128 + (directions.x * 51);
-                outputs.leftStickY = 128 + (directions.y * 30);
-            }
-            if (inputs.mod_y) {
-                outputs.leftStickX = 128 + (directions.x * 40);
-                outputs.leftStickY = 128 + (directions.y * 68);
-            }
-        }
-    }
-
     // C-stick ASDI Slideoff angle overrides any other C-stick modifiers (such as
     // angled fsmash).
     if (directions.cx != 0 && directions.cy != 0) {
@@ -287,12 +259,27 @@ void Melee18Button::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs
 
     // Horizontal SOCD overrides X-axis modifiers (for ledgedash maximum jump
     // trajectory).
-    if (!inputs.r && horizontal_socd && !directions.vertical) {
+    if (_horizontal_socd && !directions.vertical) {
         outputs.leftStickX = 128 + (directions.x * 80);
     }
 
+    if (inputs.lightshield) {
+        outputs.triggerRAnalog = 49;
+    }
+    if (inputs.midshield) {
+        outputs.triggerRAnalog = 94;
+    }
+
+    if (outputs.triggerLDigital) {
+        outputs.triggerLAnalog = 140;
+    }
+
+    if (outputs.triggerRDigital) {
+        outputs.triggerRAnalog = 140;
+    }
+
     // Shut off C-stick when using D-Pad layer.
-    if ((inputs.mod_x && inputs.mod_y) || inputs.nunchuk_c) {
+    if (inputs.nunchuk_c || inputs.up) {
         outputs.rightStickX = 128;
         outputs.rightStickY = 128;
     }

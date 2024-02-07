@@ -3,8 +3,11 @@
 
 #include "core/state.hpp"
 #include "modes/DefaultKeyboardMode.hpp"
+#include "modes/StriveKeyboardMode.hpp"
 #include "modes/FgcMode.hpp"
 #include "modes/Melee20Button.hpp"
+#include "modes/Melee20ButtonMLG.hpp"
+#include "modes/Melee20ButtonGoated.hpp"
 #include "modes/ProjectM.hpp"
 #include "modes/RivalsOfAether.hpp"
 #include "modes/Ultimate.hpp"
@@ -41,10 +44,7 @@ void select_mode(CommunicationBackend *backend) {
         } else if (inputs.left) {
             set_mode(
                 backend,
-                new ProjectM(
-                    socd::SOCD_2IP_NO_REAC,
-                    { .true_z_press = false, .ledgedash_max_jump_traj = true }
-                )
+                new ProjectM(socd::SOCD_2IP_NO_REAC, { .true_z_press = false, .ledgedash_max_jump_traj = true })
             );
         } else if (inputs.down) {
             set_mode(backend, new Ultimate(socd::SOCD_2IP));
@@ -52,10 +52,16 @@ void select_mode(CommunicationBackend *backend) {
             set_mode(backend, new FgcMode(socd::SOCD_NEUTRAL, socd::SOCD_NEUTRAL));
         } else if (inputs.b) {
             set_mode(backend, new RivalsOfAether(socd::SOCD_2IP));
+        } else if (inputs.x) {
+            set_mode(backend, new Melee20ButtonMLG(socd::SOCD_2IP_NO_REAC, { .crouch_walk_os = false }));
+        } else if (inputs.z) {
+            set_mode(backend, new Melee20ButtonGoated(socd::SOCD_2IP_NO_REAC, { .crouch_walk_os = false }));
         }
     } else if (inputs.mod_y && !inputs.mod_x && inputs.start) {
         if (inputs.l) {
             set_mode(backend, new DefaultKeyboardMode(socd::SOCD_2IP));
+        } else if (inputs.right) {
+            set_mode(backend, new StriveKeyboardMode(socd::SOCD_2IP));
         }
     }
 }

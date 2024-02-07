@@ -1,28 +1,30 @@
-#include "modes/Melee20Button.hpp"
+#include "modes/Melee20ButtonGoated.hpp"
 
 #define ANALOG_STICK_MIN 48
 #define ANALOG_STICK_NEUTRAL 128
 #define ANALOG_STICK_MAX 208
 
-Melee20Button::Melee20Button(socd::SocdType socd_type, Melee20ButtonOptions options) {
-    _socd_pair_count = 4;
+Melee20ButtonGoated::Melee20ButtonGoated(socd::SocdType socd_type, Melee20ButtonGoatedOptions options)
+{
+    _socd_pair_count = 5;
     _socd_pairs = new socd::SocdPair[_socd_pair_count]{
-        socd::SocdPair{&InputState::left,    &InputState::right,   socd_type},
-        socd::SocdPair{ &InputState::down,   &InputState::up,      socd_type},
-        socd::SocdPair{ &InputState::c_left, &InputState::c_right, socd_type},
-        socd::SocdPair{ &InputState::c_down, &InputState::c_up,    socd_type},
+        socd::SocdPair{&InputState::left,    &InputState::right  },
+        socd::SocdPair{ &InputState::down,   &InputState::up     },
+        socd::SocdPair{ &InputState::down,   &InputState::up2    },
+        socd::SocdPair{ &InputState::c_left, &InputState::c_right},
+        socd::SocdPair{ &InputState::c_down, &InputState::c_up   },
     };
 
     _options = options;
     _horizontal_socd = false;
 }
 
-void Melee20Button::HandleSocd(InputState &inputs) {
+void Melee20ButtonGoated::HandleSocd(InputState &inputs) {
     _horizontal_socd = inputs.left && inputs.right;
     InputMode::HandleSocd(inputs);
 }
 
-void Melee20Button::UpdateDigitalOutputs(InputState &inputs, OutputState &outputs) {
+void Melee20ButtonGoated::UpdateDigitalOutputs(InputState &inputs, OutputState &outputs) {
     outputs.a = inputs.a;
     outputs.b = inputs.b;
     outputs.x = inputs.x;
@@ -37,7 +39,7 @@ void Melee20Button::UpdateDigitalOutputs(InputState &inputs, OutputState &output
     outputs.start = inputs.start;
 
     // Activate D-Pad layer by holding Mod X + Mod Y or Nunchuk C button.
-    if (inputs.nunchuk_c || inputs.up2) {
+    if ((inputs.mod_x && inputs.mod_y) || inputs.nunchuk_c) {
         outputs.dpadUp = inputs.c_up;
         outputs.dpadDown = inputs.c_down;
         outputs.dpadLeft = inputs.c_left;
@@ -50,13 +52,13 @@ void Melee20Button::UpdateDigitalOutputs(InputState &inputs, OutputState &output
         outputs.dpadRight = true;
 }
 
-void Melee20Button::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs) {
+void Melee20ButtonGoated::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs) {
     // Coordinate calculations to make modifier handling simpler.
     UpdateDirections(
         inputs.left,
         inputs.right,
         inputs.down,
-        inputs.up,
+        inputs.up || inputs.up2,
         inputs.c_left,
         inputs.c_right,
         inputs.c_down,
@@ -90,10 +92,22 @@ void Melee20Button::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs
         if (directions.vertical) {
             outputs.leftStickY = 128 + (directions.y * 43);
         }
-        if (directions.diagonal && shield_button_pressed) {
-            // MX + L, R, LS, and MS + q1/2/3/4 = 6375 3750 = 51 30
-            outputs.leftStickX = 128 + (directions.x * 51);
-            outputs.leftStickY = 128 + (directions.y * 30);
+        if (directions.diagonal) {
+            // MX + q1/2/3/4 = 7375 3125 = 59 25
+            outputs.leftStickX = 128 + (directions.x * 59);
+            outputs.leftStickY = 128 + (directions.y * 25);
+            if (shield_button_pressed) {
+                // MX + L, R, LS, and MS + q1/2/3/4 = 6375 3750 = 51 30
+                outputs.leftStickX = 128 + (directions.x * 51);
+                outputs.leftStickY = 128 + (directions.y * 30);
+            }
+        }
+
+        // Angled fsmash
+        if (directions.cx != 0) {
+            // 8500 5250 = 68 42
+            outputs.rightStickX = 128 + (directions.cx * 68);
+            outputs.rightStickY = 128 + (directions.y * 42);
         }
 
         /* Up B angles */
@@ -149,13 +163,6 @@ void Melee20Button::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs
                 }
             }
         }
-
-        // Angled fsmash
-        if (directions.cx != 0) {
-            // 8500 5250 = 68 42
-            outputs.rightStickX = 128 + (directions.cx * 68);
-            outputs.rightStickY = 128 + (directions.y * 42);
-        }
     }
 
     if (inputs.mod_y) {
@@ -167,14 +174,19 @@ void Melee20Button::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs
         if (directions.vertical) {
             outputs.leftStickY = 128 + (directions.y * 59);
         }
-        if (directions.diagonal && shield_button_pressed) {
-            // MY + L, R, LS, and MS + q1/2 = 4750 8750 = 38 70
-            outputs.leftStickX = 128 + (directions.x * 38);
-            outputs.leftStickY = 128 + (directions.y * 70);
-            // MY + L, R, LS, and MS + q3/4 = 5000 8500 = 40 68
-            if (directions.y == -1) {
-                outputs.leftStickX = 128 + (directions.x * 40);
-                outputs.leftStickY = 128 + (directions.y * 68);
+        if (directions.diagonal) {
+            // MY + q1/2/3/4 = 3125 7375 = 25 59
+            outputs.leftStickX = 128 + (directions.x * 25);
+            outputs.leftStickY = 128 + (directions.y * 59);
+            if (shield_button_pressed) {
+                // MY + L, R, LS, and MS + q1/2 = 4750 8750 = 38 70
+                outputs.leftStickX = 128 + (directions.x * 38);
+                outputs.leftStickY = 128 + (directions.y * 70);
+                // MY + L, R, LS, and MS + q3/4 = 5000 8500 = 40 68
+                if (directions.y == -1) {
+                    outputs.leftStickX = 128 + (directions.x * 40);
+                    outputs.leftStickY = 128 + (directions.y * 68);
+                }
             }
         }
 
@@ -262,12 +274,13 @@ void Melee20Button::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs
     if (outputs.triggerLDigital) {
         outputs.triggerLAnalog = 140;
     }
+
     if (outputs.triggerRDigital) {
         outputs.triggerRAnalog = 140;
     }
 
     // Shut off C-stick when using D-Pad layer.
-    if (inputs.nunchuk_c || inputs.up2) {
+    if ((inputs.mod_x && inputs.mod_y) || inputs.nunchuk_c) {
         outputs.rightStickX = 128;
         outputs.rightStickY = 128;
     }
