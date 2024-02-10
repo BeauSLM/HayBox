@@ -131,7 +131,7 @@ void setup() {
 
     // Default to Rivals mode.
     primary_backend->SetGameMode(
-        new RivalsOfAether(socd::SOCD_2IP)
+        new Melee20Button(socd::SOCD_2IP_NO_REAC, { .crouch_walk_os = false })
     );
 }
 
