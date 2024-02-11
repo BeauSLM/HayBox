@@ -28,10 +28,8 @@ void RivalsOfAether::UpdateDigitalOutputs(InputState &inputs, OutputState &outpu
             outputs.triggerLAnalog = 49;
         }
         outputs.triggerLDigital = inputs.nunchuk_z;
-    } else {
-        outputs.triggerLDigital = inputs.l;
     }
-    outputs.triggerRDigital = inputs.r;
+    outputs.buttonL = inputs.r;
     outputs.start = inputs.start;
     outputs.select = inputs.select;
     outputs.home = inputs.home;
