@@ -6,13 +6,14 @@
 #define ANALOG_STICK_MAX 228
 
 Ultimate::Ultimate(socd::SocdType socd_type) {
-    _socd_pair_count = 5;
+    _socd_pair_count = 6;
     _socd_pairs = new socd::SocdPair[_socd_pair_count]{
-        socd::SocdPair{&InputState::left,    &InputState::right,   socd_type},
-        socd::SocdPair{ &InputState::down,   &InputState::up,      socd_type},
-        socd::SocdPair{ &InputState::down,   &InputState::up2,     socd_type},
-        socd::SocdPair{ &InputState::c_left, &InputState::c_right, socd_type},
-        socd::SocdPair{ &InputState::c_down, &InputState::c_up,    socd_type},
+        socd::SocdPair{&InputState::left,    &InputState::right,       socd_type},
+        socd::SocdPair{ &InputState::down,   &InputState::up,          socd_type},
+        socd::SocdPair{ &InputState::down,   &InputState::up2,         socd_type},
+        socd::SocdPair{ &InputState::down,   &InputState::lightshield, socd_type},
+        socd::SocdPair{ &InputState::c_left, &InputState::c_right,     socd_type},
+        socd::SocdPair{ &InputState::c_down, &InputState::c_up,        socd_type},
     };
 }
 
@@ -21,7 +22,6 @@ void Ultimate::UpdateDigitalOutputs(InputState &inputs, OutputState &outputs) {
     outputs.b = inputs.b;
     outputs.x = inputs.x;
     outputs.y = inputs.y;
-    outputs.buttonL = inputs.lightshield;
     outputs.buttonR = inputs.z || inputs.midshield;
     outputs.triggerLDigital = inputs.l;
     outputs.triggerRDigital = inputs.r;
@@ -44,7 +44,7 @@ void Ultimate::UpdateAnalogOutputs(InputState &inputs, OutputState &outputs) {
         inputs.left,
         inputs.right,
         inputs.down,
-        inputs.up || inputs.up2,
+        inputs.up || inputs.up2 || inputs.lightshield,
         inputs.c_left,
         inputs.c_right,
         inputs.c_down,
